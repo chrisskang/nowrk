@@ -1,0 +1,23 @@
+.DS_Store
+/node_modules/
+
+.env
+.env.local
+
+.vscode/
+# Build output
+/dist
+/build
+
+# Ignore all .log files
+*.log
+# Ignore all .env files
+*.env
+# Ignore all .DS_Store files
+*.DS_Store
+# Ignore all .vscode files
+/.vscode/
+
+# React Router
+/.react-router/
+/build/
