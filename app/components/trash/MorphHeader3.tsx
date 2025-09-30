@@ -25,6 +25,7 @@ const fragmentShader = `
   uniform vec3 uOrigin2;
   uniform float uRadius;
   uniform float uRoundness;
+  uniform vec2 uMouse;
 
   // Squircle SDF using superquadric formula
   float squircleSDF(vec3 p, vec3 center, float radius, float n) {
@@ -41,15 +42,17 @@ const fragmentShader = `
   }
 
   float sceneSDF(vec3 p, float t) {
-    vec3 center1 = vec3(-0.3, 0, 0);
-    vec3 center2 = vec3(0.5, 0, 0);
+    vec3 center1 = vec3(-0.8, 0, 0);
+    vec3 center2 = vec3(0.5 + 0.5 * sin(t), 0, 0);
+    vec3 center3 = vec3(uMouse, 0.0);
     float radius = 0.2;
     float roundness = 4.0; // higher n makes shape closer to square in xy plane
 
     float d1 = squircleSDF(p, center1, radius, roundness);
     float d2 = squircleSDF(p, center2, radius, roundness);
+    float d3 = squircleSDF(p, center3, radius, roundness);
 
-    return smoothUnion(d1, d2, 0.5);
+    return smoothUnion(smoothUnion(d1, d2, 0.5), d3, 0.5);
   }
 
   void main() {
@@ -71,15 +74,35 @@ const fragmentShader = `
 function SDF() {
   const materialRef = useRef<THREE.ShaderMaterial>(null);
 
+  useFrame(({ clock }) => {
+    if (materialRef.current) {
+      materialRef.current.uniforms.uTime.value = clock.elapsedTime;
+    }
+  });
+
+  useEffect(() => {
+    function onMouseMove(event: MouseEvent) {
+      if (!materialRef.current) return;
+      const x = (event.clientX / window.innerWidth) * 2 - 1;
+      const y = -((event.clientY / window.innerHeight) * 2 - 1);
+      materialRef.current.uniforms.uMouse.value.set(x, y);
+    }
+    window.addEventListener("mousemove", onMouseMove);
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+    };
+  }, []);
+
   return (
     <mesh>
-      <planeGeometry args={[500, 500]} />
+      <planeGeometry args={[1000, 1000]} />
       <shaderMaterial
         ref={materialRef}
         vertexShader={vertexShader}
         fragmentShader={fragmentShader}
         uniforms={{
           uTime: { value: 0 },
+          uMouse: { value: new THREE.Vector2(0, 0) },
         }}
       />
     </mesh>

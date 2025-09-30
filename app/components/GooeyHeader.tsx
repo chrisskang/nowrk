@@ -27,6 +27,8 @@ const fragmentShader = `
   uniform float uRoundness;
   uniform vec2 uMouse;
   uniform vec3 uSize;
+  uniform vec2 uResolution;
+  uniform bool uDebug;
 
   vec4 opElongate(in vec3 p, in vec3 h) {
       vec3 q = abs(p) - h;
@@ -52,22 +54,58 @@ const fragmentShader = `
   float sceneSDF(vec3 p, float t) {
     vec3 center1 = uOrigin1;
     vec3 center2 = uOrigin2;
-    vec3 center3 = vec3(uMouse, 0.0);
+    vec2 mouse = uMouse;
+    mouse.x *= uResolution.x / uResolution.y;
+
+    vec3 center3 = vec3(mouse, 0.0);
     float radius = uRadius;
     float roundness = uRoundness; // higher n makes shape closer to square in xy plane
     vec3 size = uSize;
 
-    float d1 = squircleSDF(p, center1, radius, roundness, vec3(0.6, 0.0, 0.0));
+    float d1 = squircleSDF(p, center1, radius, roundness, vec3(0.6,0.0,0.0));
     float d2 = squircleSDF(p, center2, radius, roundness, vec3(0.0));
     float d3 = squircleSDF(p, center3, radius, roundness, vec3(0.0));
     float d4 = sphereSDF(p, center3, 0.1);
-    return smoothUnion(d1, d4, 0.1);
+    float d5 = sphereSDF(p, center1, 0.1);
+    return smoothUnion(d1,d4,0.1);
   }
     
 
   void main() {
     vec2 uv = vUv * 2.0 - 1.0;
+    uv.x *= uResolution.x / uResolution.y;
+    
+
+    if (uDebug) {
+      // Crosshair at (0,0)
+      float lineX = 1.0 - smoothstep(0.0, 0.002, abs(uv.x));
+      float lineY = 1.0 - smoothstep(0.0, 0.002, abs(uv.y));
+      float cross = max(lineX, lineY);
+      if (cross > 0.0) {
+        gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+        return;
+      }
+
+      // Blue dot at uOrigin1
+      float dotSize = 0.02;
+      float distToOrigin = length(uv - uOrigin1.xy);
+      if (distToOrigin < dotSize) {
+        gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0);
+        return;
+      }
+
+      // Gradient background for orientation
+      vec3 debugColor = vec3(
+        (uv.x + 1.0) * 0.5,
+        (uv.y + 1.0) * 0.5,
+        0.0
+      );
+      gl_FragColor = vec4(debugColor, 1.0);
+      return;
+    }
+    
     float t = uTime;
+    
   
     vec3 p = vec3(uv, 0.0);
     float d = sceneSDF(p, t);
@@ -76,11 +114,18 @@ const fragmentShader = `
     float edgeThickness = fwidth(d);
 
     float alpha = 1.0 - smoothstep(0.0, edgeThickness, d);
+    
 
-    vec3 color = vec3(0.0);
-    gl_FragColor = vec4(color, alpha);
+    vec3 color = mix(vec3(1.0), vec3(0.0), alpha);
+    gl_FragColor = vec4(color, 1.0);
   }
 `;
+
+//vec3 color = vec3(0.0);
+//gl_FragColor = vec4(color, alpha);
+
+//vec3 color = mix(vec3(1.0), vec3(0.0), alpha);
+//gl_FragColor = vec4(color, 1.0);
 
 function SDF({
   uOrigin1,
@@ -108,6 +153,19 @@ function SDF({
     return () => {
       window.removeEventListener("mousemove", onMouseMove);
     };
+  }, []);
+
+  useEffect(() => {
+    function handleResize() {
+      if (materialRef.current) {
+        materialRef.current.uniforms.uResolution.value.set(
+          window.innerWidth,
+          window.innerHeight
+        );
+      }
+    }
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   useFrame(({ clock }) => {
@@ -148,12 +206,7 @@ function SDF({
 
   return (
     <mesh>
-      <planeGeometry
-        args={[
-          Math.min(window.innerWidth, window.innerHeight),
-          Math.min(window.innerWidth, window.innerHeight),
-        ]}
-      />
+      <planeGeometry args={[window.innerWidth, window.innerHeight]} />
       <shaderMaterial
         ref={materialRef}
         vertexShader={vertexShader}
@@ -166,8 +219,11 @@ function SDF({
           uRoundness: { value: uRoundness },
           uMouse: { value: new THREE.Vector2(0, 0) },
           uSize: { value: new THREE.Vector3(...uSize) },
+          uResolution: {
+            value: new THREE.Vector2(window.innerWidth, window.innerHeight),
+          },
+          uDebug: { value: false },
         }}
-        transparent
       />
     </mesh>
   );
@@ -176,10 +232,10 @@ function SDF({
 export default function GooeyHeader() {
   const [uOrigin1, setUOrigin1] = useState<[number, number, number]>([0, 0, 0]);
   const [uOrigin2, setUOrigin2] = useState<[number, number, number]>([
-    0.9, 0, 0,
+    0.0, 0, 0,
   ]);
   const [uRadius, setURadius] = useState<number>(0.1);
-  const [uRoundness, setURoundness] = useState<number>(4.0);
+  const [uRoundness, setURoundness] = useState<number>(2.5);
   const [uSize, setUSize] = useState<[number, number, number]>([0.6, 0.0, 0.0]);
 
   return (
@@ -191,7 +247,7 @@ export default function GooeyHeader() {
           zoom={1}
           near={1}
           far={2000}
-          position={[0, 0, 100]}
+          position={[0, 0, 1]}
         />
         <SDF
           uOrigin1={uOrigin1}
