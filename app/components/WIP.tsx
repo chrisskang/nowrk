@@ -1,7 +1,7 @@
 import React from "react";
 import BackgroundAnimation from "./BackgroundAnimation";
 
-const Landing = () => {
+const WIP = () => {
   return (
     <div>
       <BackgroundAnimation />
@@ -15,4 +15,4 @@ const Landing = () => {
   );
 };
 
-export default Landing;
+export default WIP;

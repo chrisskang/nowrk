@@ -33,16 +33,18 @@ const fragmentShader = `
     return val * radius * 0.5;
   }
 
+
+
   float smoothUnion(float d1, float d2, float k) {
     float h = clamp(0.5 + 0.5*(d2 - d1)/k, 0.0, 1.0);
     return mix(d2, d1, h) - k*h*(1.0 - h);
   }
 
   float sceneSDF(vec3 p, float t) {
-    vec3 center1 = uOrigin1;
-    vec3 center2 = uOrigin2;
-    float radius = uRadius;
-    float roundness = uRoundness; // higher n makes shape closer to square in xy plane
+    vec3 center1 = vec3(-0.3, 0, 0);
+    vec3 center2 = vec3(0.5, 0, 0);
+    float radius = 0.2;
+    float roundness = 4.0; // higher n makes shape closer to square in xy plane
 
     float d1 = squircleSDF(p, center1, radius, roundness);
     float d2 = squircleSDF(p, center2, radius, roundness);
@@ -66,62 +68,18 @@ const fragmentShader = `
   }
 `;
 
-function SDF({
-  uOrigin1,
-  uOrigin2,
-  uRadius,
-  uRoundness,
-}: {
-  uOrigin1: [number, number, number];
-  uOrigin2: [number, number, number];
-  uRadius: number;
-  uRoundness: number;
-}) {
+function SDF() {
   const materialRef = useRef<THREE.ShaderMaterial>(null);
-
-  useFrame(({ clock }) => {
-    if (materialRef.current) {
-      materialRef.current.uniforms.uTime.value = clock.elapsedTime;
-    }
-  });
-
-  useEffect(() => {
-    if (materialRef.current) {
-      materialRef.current.uniforms.uOrigin1.value.set(...uOrigin1);
-    }
-  }, [uOrigin1]);
-
-  useEffect(() => {
-    if (materialRef.current) {
-      materialRef.current.uniforms.uOrigin2.value.set(...uOrigin2);
-    }
-  }, [uOrigin2]);
-
-  useEffect(() => {
-    if (materialRef.current) {
-      materialRef.current.uniforms.uRadius.value = uRadius;
-    }
-  }, [uRadius]);
-
-  useEffect(() => {
-    if (materialRef.current) {
-      materialRef.current.uniforms.uRoundness.value = uRoundness;
-    }
-  }, [uRoundness]);
 
   return (
     <mesh>
-      <planeGeometry args={[100, 100]} />
+      <planeGeometry args={[500, 500]} />
       <shaderMaterial
         ref={materialRef}
         vertexShader={vertexShader}
         fragmentShader={fragmentShader}
         uniforms={{
           uTime: { value: 0 },
-          uOrigin1: { value: new THREE.Vector3(...uOrigin1) },
-          uOrigin2: { value: new THREE.Vector3(...uOrigin2) },
-          uRadius: { value: uRadius },
-          uRoundness: { value: uRoundness },
         }}
       />
     </mesh>
@@ -129,15 +87,6 @@ function SDF({
 }
 
 export default function MorphHeader2() {
-  const [uOrigin1, setUOrigin1] = useState<[number, number, number]>([
-    -0.8, 0, 0,
-  ]);
-  const [uOrigin2, setUOrigin2] = useState<[number, number, number]>([
-    0.9, 0, 0,
-  ]);
-  const [uRadius, setURadius] = useState<number>(0.1);
-  const [uRoundness, setURoundness] = useState<number>(4.0);
-
   return (
     <div className="w-screen h-screen border-2 border-blue-300">
       {/* R3F Canvas */}
@@ -145,20 +94,11 @@ export default function MorphHeader2() {
         <OrthographicCamera
           makeDefault
           zoom={1}
-          top={100}
-          bottom={0}
-          left={0}
-          right={100}
           near={1}
           far={2000}
-          position={[0, 0, 100]}
+          position={[0, 0, 10]}
         />
-        <SDF
-          uOrigin1={uOrigin1}
-          uOrigin2={uOrigin2}
-          uRadius={uRadius}
-          uRoundness={uRoundness}
-        />
+        <SDF />
       </Canvas>
     </div>
   );
